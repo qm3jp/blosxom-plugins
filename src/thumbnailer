@@ -1,0 +1,162 @@
+# Blosxom Plugin: thumbnailer 
+# Author: Drew Benedetti <drewb@drewb.net>
+# Version: 0.4
+#
+# License: Public Domain
+# imgSrcToFile and <img> tag parsing from Nelson Minar's imagesizer (http://www.somebits.com/weblog/tech/blosxom/plugins/imagesizer)
+package thumbnailer;
+
+use Image::Magick;
+use File::Basename;
+
+# --- Configuration variables ---
+
+# Path to images as shown in <img> tags
+$imageURL = "http://example.com/images";
+
+# Path to images as seen by the web server
+$imagedir = "/example/images";
+# and here's where the thumbnails will go
+# make sure it's writeable
+$thumbdir = "$imagedir/thumbs";
+
+# images larger than these will have thumbnails generated for them
+$maxwidth = 800;
+$maxheight = 600;
+
+# the thumbnails will be at most these dimensions
+$thumbwidth = 320;
+$thumbheight = 240;
+
+# --- don't edit below this line unless you know what you are doing ---
+
+# this subroutine is from Nelson Minar's imagesizer
+sub imgSrcToFile {
+	my ($src) = @_;
+	if ($src =~ s!$imageURL!$imagedir!) {
+		return $src;
+	}
+	return 0;
+}
+
+sub fileToImgSrc {
+	my ($filename) = @_;
+	if ($filename =~ s!$imagedir!$imageURL!) {
+		return $filename;
+	}
+	return 0;
+}
+
+sub start {
+	# $imagedir is readable, $thumbdir is readable & writable
+	if (! (-r $imagedir && -r $thumbdir && -w $thumbdir)) {
+		return 0;
+	}
+	1;
+}
+
+sub story {
+	my ($pkg, $path, $filename, $story_ref, $title_ref, $body_ref) = @_;
+	$body = $$body_ref;
+
+	$rebuilt = '';
+	# Find any <img> tag in the post body
+	while ($body =~ s/(.*?)(<img\s[^>]+>)//is) {
+		$rebuilt .= $1;
+		$tag = $2;
+
+		# Grab the source out of the image tag
+		$tag =~ m/<img.*?src="(.*?)".*?>/is;
+		$url = $1;
+		$filename = imgSrcToFile($url);
+		$thumbname = $thumbdir . "/th-" . basename($filename);
+
+		# if no thumbnal, check with ImageMagick if one is needed
+		# and then create it
+		if (! -e $thumbname) {
+			$image = new Image::Magick;
+			($width, $height, $size, $format) = $image->Ping($filename);
+			if ($width > $maxwidth || $height > $maxheight) {
+				$image->Read($filename);
+				$image->Scale(geometry=>($thumbwidth . "x" . $thumbheight));
+				# put a label with the original image's size on the thumbnail
+				$image->Annotate(text=>($width . "x" . $height), pointsize=>12, fill=>'white',
+								undercolor=>'black', gravity=>'NorthWest', geometry=>'+0+0');
+				$image->Write($thumbname);
+			}
+			undef $image;
+		}
+
+		# if there's a thumbnail, rewrite the <img> tag
+		if (-e $thumbname) {
+			$thumbURL = fileToImgSrc($thumbname);
+			$tag =~ s!$url!$thumbURL!;
+			$tag = "<a href=\"" . $url . "\">" . $tag . "</a>";
+		}
+		$rebuilt .= $tag;
+	}
+	$$body_ref = "$rebuilt$body";
+	1;
+}
+
+# this is needed so that the whole plugin returns true?
+# because blosxom and/or perl are crazy???
+1;
+
+__END__
+
+=head1 NAME
+
+Blosxom Plug-in: thumbnailer
+
+=head1 SYNOPSIS
+
+Purpose: generate the thumbnails for "large" images in a story
+
+This plugin will examine the size of any images in a story, and generate thumbnails for them if they are bigger than the threshold values (if a thumbnail did not already exist).
+
+It then rewrites image tags and adds links so that the thumbnails will show up properly in the story.
+
+=head1 VERSION
+
+0.3
+
+=head1 AUTHOR
+
+Drew Benedetti <drewb@drewb.net>, http://drewb.net/blog/code/blosxom
+
+=head1 SEE ALSO
+
+Blosxom Home/Docs/Licensing: http://blosxom.com
+
+=head1 BUGS
+
+Send bug reports to me, drewb@drewb.net
+
+=head1 LICENSE
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <http://unlicense.org>
+

@@ -1,0 +1,108 @@
+# Blosxom Plugin: fold
+# Author(s): Drew Benedetti <drewb@drewb.net> 
+# Version: 0.1
+#
+# requires permalink plugin: http://www.zovirl.com/2004/08/06/permalink-002/
+
+package fold;
+
+# --- Configurable variables -----
+
+my $marker = "<!--FOLD-->";
+
+# --------------------------------
+
+my $fold;
+
+sub start {
+  1;
+}
+
+sub head {
+  my($pkg, $path, $head_ref) = @_;
+
+  # decide whether to fold based on path
+  # no if it looks like a single file, yes otherwise
+  if($path =~ /\.$blosxom::flavour$/) {
+    $fold = 0;
+  } else {
+    $fold = 1;
+  }
+
+  return 1;
+}
+
+sub story {
+  my($pkg, $path, $filename, $story_ref, $title_ref, $body_ref) = @_;
+  # I should be able to call $permalink::get_link() here
+  # so that execution order doesn't matter, but perl freaked out about that for some reason
+  my $link = "<a href=\"$permalink::story\">more...</a>";
+
+  if($fold == 1) {
+    # replace everything after fold marker with link to full story
+    $$body_ref =~ s/$marker.*$/$link/s;
+  }
+
+  1;
+}
+
+1;
+
+__END__
+
+=head1 NAME
+
+Blosxom Plug-in: fold
+
+=head1 SYNOPSIS
+
+Replace the full body with a shortened version (marked by user), unless
+looking at that story individually
+
+Must be run after permalink.
+
+=head1 VERSION
+
+0.1
+
+=head1 AUTHOR
+
+Drew Benedetti, <drewb@drewb.net>
+
+=head1 SEE ALSO
+
+Blosxom Home/Docs/Licensing: http://www.raelity.org/apps/blosxom/
+
+Blosxom Plugin Docs: http://www.raelity.org/apps/blosxom/plugin.shtml
+
+=head1 BUGS
+
+Address bug reports to me, <drewb@drewb.net>
+
+=head1 LICENSE
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <http://unlicense.org>
+
